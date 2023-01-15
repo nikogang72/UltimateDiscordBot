@@ -1,6 +1,7 @@
 import discord
+import json
 from discord.ext import commands 
-from youtube_dl import YoutubeDL
+from yt_dlp import YoutubeDL
 from typing import Any, Literal
 
 class MusicCog(commands.Cog):
@@ -10,90 +11,94 @@ class MusicCog(commands.Cog):
         self.is_playing = False
         self.is_paused = False
 
-        class Queue(): 
-            def __init__(self):
-                self.song: dict[str, Any] | Literal[False] = None
-                self.channel: discord.VoiceProtocol = None
-                self._tail = []
-
-            def next_song(self):
-                if len(self._tail) > 0:
-                    self.song = self.tail[0][0]
-                    self.channel: self.tail[0][1]
-                    if len(self._tail) > 0:
-                        self._tail.pop(0)
-                else:
-                    self.song = None
-                    self.channel = None
-
-            def length(self) -> int:
-                return len(self._tail) + (1 if self.song != None else 0)
-
-            def add_new_song(self, song: dict[str, Any] | Literal[False], channel: discord.VoiceProtocol):
-                if self.song == None:
-                    self.song = song
-                    self.channel = channel
-                else:
-                    self._tail.append([song, channel])
-                
-
-            def clear(self):
-                self.song = None
-                self.channel = None
-                self._tail = []
-
-        self.music_queue = Queue()
-        self.YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist':'True'}
-        self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+        self.music_queue = []
+        self.YDL_OPTIONS = {
+            'format': 'm4a/bestaudio',
+            # ℹ️ See help(yt_dlp.postprocessor) for a list of available Postprocessors and their arguments
+            'postprocessors': [{  # Extract audio using ffmpeg
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'm4a',
+            }],
+            'noplaylist': 'True'
+        }
+        self.FFMPEG_OPTIONS = {
+            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+            'options': '-vn'
+        }
 
         self.vc = None
 
+    def add_new_song(self, song: dict[str, Any] | Literal[False], channel: discord.VoiceProtocol):
+        self.music_queue.append([song, channel])
+            
+    def clear(self):
+        self.music_queue = []
+
+    def show_queue(self):
+        retval = ""
+        if len(self.music_queue) > 0:
+            retval = "Currently playing: " + self.music_queue[0][0]["title"] + "\n"
+            for i in range(0 ,len(self.music_queue)):
+                retval += "- " + self.music_queue[i][0]['title'] + "\n"
+        return retval
     
      #searching the item on youtube
     def search_yt(self, item):
+        index = 0
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
             try: 
-                info = ydl.extract_info("ytsearch:%s" % item, download=False)['entries'][0]
-            except Exception: 
+                info = ydl.extract_info(item, download=False)
+                #print(json.dumps(ydl.sanitize_info(info), indent=4))
+                # with open("./info.json", "w" , encoding="utf-8") as f:
+                #     info_ = ydl.sanitize_info(info)["formats"]
+                #     index = len(info_)-1
+                #     while index >= 0 and info_[index]["resolution"] != "audio only":
+                #         index -= 1
+                #     print(index)
+                #     f.write(json.dumps(info_[index], indent=4))
+                index = len(info["formats"])-1
+                while index >= 0 and info["formats"][index]["resolution"] != "audio only":
+                    index -= 1
+                if index < 0:
+                    raise ValueError("Audio not found")
+            except Exception as e: 
+                print(e.__class__, e)
                 return False
 
-        return {'source': info['formats'][0]['url'], 'title': info['title']}
+        print("Title", info['title'])
+        print("Format", info['formats'][index]['format'])
+        print("URL", info['formats'][index]['url'])
+        return {'source': info['formats'][index]['url'], 'title': info['title']}
 
-    async def play_next(self):
-        if self.music_queue.length() > 0:
+    def play_next(self):
+        if len(self.music_queue) > 1:
+            self.music_queue.pop(0)
             self.is_playing = True
-
             #get the first url
-            m_url = self.music_queue.song['source']
-
-            #remove the first element as you are currently playing it
-            #TODO MODIFICAR ESTO QUE NO ME PIACE
+            m_url = self.music_queue[0][0]['source']
             self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), after=lambda e: self.play_next())
-
-            self.music_queue.next_song()
+        elif len(self.music_queue) > 0:
+            self.music_queue.pop(0)
+            self.is_playing = False
         else:
             self.is_playing = False
-            await self.vc.disconnect()
 
     # infinite loop checking 
     async def play_music(self, ctx):
-        if self.music_queue.length() > 0:
+        if len(self.music_queue) > 0:
             self.is_playing = True
 
-            m_url = self.music_queue.song['source']
+            m_url = self.music_queue[0][0]['source']
             #try to connect to voice channel if you are not already connected
             if self.vc == None or not self.vc.is_connected():
-                self.vc = await self.music_queue.channel.connect(self_deaf=True)
+                self.vc = await self.music_queue[0][1].connect(self_deaf=True)
                 #in case we fail to connect
                 if self.vc == None:
                     await ctx.send("I couldn't connect to the voice channel")
                     return
             else:
-                await self.vc.move_to(self.music_queue.channel)
-            
-            #remove the first element as you are currently playing it
+                await self.vc.move_to(self.music_queue[0][1])
             self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), after=lambda e: self.play_next())
-            self.music_queue.next_song()
         else:
             print("Not Playing")
             self.is_playing = False
@@ -110,14 +115,19 @@ class MusicCog(commands.Cog):
             #you need to be connected so that the bot knows where to go
             await ctx.send("For starters, connect to a voice channel.")
         elif self.is_paused:
-            self.vc.resume()
+            await self.resume()
         else:
+            if query == "" or query == " ":
+                return await ctx.send("Invalid link virgen")
             song = self.search_yt(query)
             if type(song) == type(True):
+                print("Could not download the song. Incorrect format try another keyword. This could be due to playlist or a livestream format.")
                 await ctx.send("Could not download the song. Incorrect format try another keyword. This could be due to playlist or a livestream format.")
             else:
+                self.add_new_song(song, voice_channel)
+                print(f"Song added to the queue: {song['title']}")
+                print("--------------------------------------------")
                 await ctx.send(f"Song added to the queue: {song['title']}")
-                self.music_queue.add_new_song(song, voice_channel)
                 if self.is_playing == False:
                     await self.play_music(ctx)
 
@@ -126,37 +136,36 @@ class MusicCog(commands.Cog):
         if self.is_playing:
             self.is_playing = False
             self.is_paused = True
-            self.vc.pause()
+            await ctx.send(f"Music paused")
+            await self.vc.pause()
         elif self.is_paused:
             self.is_paused = False
             self.is_playing = True
-            self.vc.resume()
+            await ctx.send(f"Music resumed")
+            await self.vc.resume()
 
     @commands.command(name = "resume", aliases=["r"], help="Resumes playing with the discord bot")
     async def resume(self, ctx, *args):
         if self.is_paused:
             self.is_paused = False
             self.is_playing = True
-            self.vc.resume()
+            await ctx.send(f"Resume playing??? no se decirlo bien ayuda @jorgito")
+            await self.vc.resume()
 
     @commands.command(name="skip", aliases=["s"], help="Skips the current song being played")
     async def skip(self, ctx):
         if self.vc != None and self.vc:
             self.vc.stop()
             #try to play next in the queue if it exists
+            await ctx.send(f"Skipping.")
             await self.play_next(ctx)
 
 
     @commands.command(name="queue", aliases=["q"], help="Displays the current songs in queue")
     async def queue(self, ctx):
-        retval = ""
-        for i in range(0, self.music_queue.length()):
-            # display a max of 5 songs in the current queue
-            if (i > 4): break
-            retval += self.music_queue.song['title'] + "\n"
-
-        if retval != "":
-            await ctx.send(retval)
+        queue_string = self.show_queue()
+        if queue_string != "":
+            await ctx.send(queue_string)
         else:
             await ctx.send("No music in queue")
 
@@ -164,7 +173,7 @@ class MusicCog(commands.Cog):
     async def clear(self, ctx):
         if self.vc != None and self.is_playing:
             self.vc.stop()
-        self.music_queue.clear()
+        self.music_queue = []
         await ctx.send("Music queue cleared")
 
     @commands.command(name="leave", aliases=["disconnect", "l", "d"], help="Kick the bot from VC")
