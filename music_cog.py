@@ -19,7 +19,8 @@ class MusicCog(commands.Cog):
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'm4a',
             }],
-            'noplaylist': 'True'
+            'noplaylist': 'True',
+            'default_search': 'ytsearch'
         }
         self.FFMPEG_OPTIONS = {
             'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
@@ -48,14 +49,17 @@ class MusicCog(commands.Cog):
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
             try: 
                 info = ydl.extract_info(item, download=False)
-                #print(json.dumps(ydl.sanitize_info(info), indent=4))
+                # print(json.dumps(ydl.sanitize_info(info), indent=4))
                 # with open("./info.json", "w" , encoding="utf-8") as f:
-                #     info_ = ydl.sanitize_info(info)["formats"]
-                #     index = len(info_)-1
-                #     while index >= 0 and info_[index]["resolution"] != "audio only":
-                #         index -= 1
-                #     print(index)
-                #     f.write(json.dumps(info_[index], indent=4))
+                #     # info_ = ydl.sanitize_info(info)["formats"]
+                #     # index = len(info_)-1
+                #     # while index >= 0 and info_[index]["resolution"] != "audio only":
+                #     #     index -= 1
+                #     # print(index)
+                #     #f.write(json.dumps(info_[index], indent=4))
+                #     f.write(json.dumps(ydl.sanitize_info(info), indent=4))
+                if info["_type"] == 'playlist':
+                    info = info['entries'][0]
                 index = len(info["formats"])-1
                 while index >= 0 and info["formats"][index]["resolution"] != "audio only":
                     index -= 1
@@ -119,15 +123,16 @@ class MusicCog(commands.Cog):
         else:
             if query == "" or query == " ":
                 return await ctx.send("Invalid link virgen")
+            message = await ctx.send("Searching...")
             song = self.search_yt(query)
             if type(song) == type(True):
                 print("Could not download the song. Incorrect format try another keyword. This could be due to playlist or a livestream format.")
-                await ctx.send("Could not download the song. Incorrect format try another keyword. This could be due to playlist or a livestream format.")
+                await message.edit(content=f'Could not download the song. Incorrect format try another keyword. This could be due to playlist or a livestream format.')
             else:
                 self.add_new_song(song, voice_channel)
                 print(f"Song added to the queue: {song['title']}")
                 print("--------------------------------------------")
-                await ctx.send(f"Song added to the queue: {song['title']}")
+                await message.edit(content=f"Song added to the queue: {song['title']}")
                 if self.is_playing == False:
                     await self.play_music(ctx)
 
