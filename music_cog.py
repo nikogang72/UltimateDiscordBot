@@ -58,7 +58,7 @@ class MusicCog(commands.Cog):
                 #     # print(index)
                 #     #f.write(json.dumps(info_[index], indent=4))
                 #     f.write(json.dumps(ydl.sanitize_info(info), indent=4))
-                if info["_type"] == 'playlist':
+                if info.get("_type", "video") == 'playlist':
                     info = info['entries'][0]
                 index = len(info["formats"])-1
                 while index >= 0 and info["formats"][index]["resolution"] != "audio only":
