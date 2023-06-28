@@ -13,9 +13,9 @@ class AnimeArtCog(commands.Cog):
         self.danbooru_url = 'https://danbooru.donmai.us'
         self.safebooru_url = 'https://safebooru.org'
         self.danbooru_headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36', 
-                #'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                #'Accept-Encoding': 'gzip, deflate, br',
+                'User-Agent': 'Agente de Usuario del bot de discord amigo', 
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
                 'sec-ch-ua': '"Not?A_Brand";v="8", "Chromium";v="108", "Brave";v="108"',
                 'if-none-match':'W/"37ca6f8b1f9c2e77419c12599351968c"'
             }
@@ -61,7 +61,7 @@ class AnimeArtCog(commands.Cog):
                 tags.append(tag_fixed[0])
             await message.edit(content='Getting posts...')
             r = requests.get(url = f'{self.danbooru_url}/posts.json?tags={"+".join(tags)}', headers=self.danbooru_headers)
-            #print(f'{self.danbooru_url}/posts.json?tags={"+".join(tags)}')
+            print(f'{self.danbooru_url}/posts.json?tags={"+".join(tags)}')
             if  r.status_code != 200 and r.status_code != 304:
                 raise ValueError(f'Error getting posts. Status code: {r.status_code}')
             danb_data = r.json()

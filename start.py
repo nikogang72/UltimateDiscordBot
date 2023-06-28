@@ -1,6 +1,7 @@
 from email.message import Message
 import os
 import asyncio
+import time
 import discord
 from discord.ext import commands 
 from dotenv import load_dotenv
@@ -13,16 +14,27 @@ from help_cog import help_cog
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='?', description="WIP 友希那 Bot", help_command=None, intents=intents)
 
+COOLDOWN_AMOUNT = 60.0  # seconds
+last_executed = 0.0
+def assert_cooldown():
+    global last_executed  # you can use a class for this if you wanted
+    if last_executed + COOLDOWN_AMOUNT < time.time():
+        last_executed = time.time()
+        return True
+    return False
+
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=discord.Game("?help for commands."))
     print(f"Logged in as\n\tName: {bot.user.name}\n\tID: {bot.user.id}\n\tDiscord.py version: {discord.__version__}")
-        
+
 @bot.listen('on_message')
 async def squad_pug(message: discord.Message):
     if message.author == bot.user:
         return
     if 'squad' in message.content:
+        if not assert_cooldown():
+            return
         await message.channel.send('squad amigo sale squad @Pug.exe!!!')
 
 @bot.listen('on_message')
@@ -30,16 +42,28 @@ async def virgadas(message: discord.Message):
     if message.author == bot.user:
         return
     if ':v' in message.content:
+        if not assert_cooldown():
+            return
         await message.channel.send(":'v")
     elif ':V' in message.content:
+        if not assert_cooldown():
+            return
         await message.channel.send(":'V")
     elif 'virgen' in message.content:
+        if not assert_cooldown():
+            return
         await message.channel.send('https://tenor.com/view/nerd-gif-24439345')
     elif 'boca' in message.content:
+        if not assert_cooldown():
+            return
         await message.channel.send('https://media.discordapp.net/attachments/827962607985623071/1014018694021644360/ganoboca.gif')
     elif 'river' in message.content:
+        if not assert_cooldown():
+            return
         await message.channel.send('https://tenor.com/view/river-plate-cheers-wine-tophat-emoji-gif-4831830')
     elif 'fortnite' in message.content:
+        if not assert_cooldown():
+            return
         await message.channel.send('https://cdn.discordapp.com/attachments/681399276978438144/1023791346890330193/unknown.png')
     
         
@@ -56,7 +80,7 @@ async def context(ctx: commands.Context):
 @bot.command(name='help')
 async def _help(ctx: commands.Context):
     des = """
-    ``?help`` - show this message
+    ``?help`` - show this MESSAGE
     ``?play <keywords>`` - finds the song on youtube and plays it in your current channel.  Will resume playing the current song if it was paused
     ``?queue`` - displays the current music queue
     ``?skip`` - skips the current song being played
