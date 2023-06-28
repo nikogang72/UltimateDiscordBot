@@ -72,7 +72,7 @@ class MusicCog(commands.Cog):
         print("Title", info['title'])
         print("Format", info['formats'][index]['format'])
         print("URL", info['formats'][index]['url'])
-        return {'source': info['formats'][index]['url'], 'title': info['title']}
+        return {'source': info['formats'][index]['url'], 'title': info['title'], 'webpage_url': info['webpage_url']}
 
     def play_next(self):
         if len(self.music_queue) > 1:
@@ -132,7 +132,7 @@ class MusicCog(commands.Cog):
                 self.add_new_song(song, voice_channel)
                 print(f"Song added to the queue: {song['title']}")
                 print("--------------------------------------------")
-                await message.edit(content=f"Song added to the queue: {song['title']}")
+                await message.edit(content=f"Song added to the queue:\n   {song['title']}\n   <{ self.music_queue[0][0]['webpage_url']}>")
                 if self.is_playing == False:
                     await self.play_music(ctx)
 
