@@ -4,3 +4,4 @@ venv/
 __pycache__/
 info.json
 cookies.txt
+discord.log

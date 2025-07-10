@@ -1,3 +1,4 @@
+import os
 import asyncio
 from dataclasses import dataclass
 from typing import List, Optional, Union
@@ -41,7 +42,7 @@ class MusicCog(commands.Cog):
     def __init__(self, bot):
         self.queue = MusicQueue()
         self.vc: Optional[VoiceClient] = None
-
+        self.cookie_path = os.path.expanduser("~/UltimateDiscordBot/cookies.txt")
         self.YDL_OPTIONS = {
             'format': 'm4a/bestaudio',
             # ℹ️ See help(yt_dlp.postprocessor) for a list of available Postprocessors and their arguments
@@ -51,15 +52,15 @@ class MusicCog(commands.Cog):
             }],
             'noplaylist': 'True',
             'default_search': 'ytsearch',
-            'cookiefile': '~/UltimateDiscordBot/cookies.txt'
+            'cookiefile': self.cookie_path
         }
         self.FFMPEG_OPTIONS = {
             'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-            'options': '-vn'
+            'options': '-vn -threads 2'
         }
 
     def _extract_info(self, query: str) -> Union[dict, None]:
-        try:
+        try:  
             with YoutubeDL(self.YDL_OPTIONS) as ydl:
                 info = ydl.extract_info(query, download=False)
                 if info.get('_type') == 'playlist':
@@ -83,8 +84,7 @@ class MusicCog(commands.Cog):
     def _after_play(self, error: Optional[Exception]) -> None:
         if error:
             self.bot.logger.error(f"Error en reproducción: {error}")
-        fut = asyncio.run_coroutine_threadsafe(self._play_next(), self.bot.loop)
-        fut.add_done_callback(lambda f: f.exception() and self.bot.logger.error(f.exception()))
+        self.bot.loop.call_soon_threadsafe(asyncio.create_task, self._play_next())
 
     async def _play_next(self) -> None:
         """Reproduce la siguiente canción en la cola."""
@@ -100,7 +100,7 @@ class MusicCog(commands.Cog):
             self.bot.logger.error(f"No se pudo conectar: {e}")
             return
 
-        source = discord.FFmpegPCMAudio(next_item.source, **self.FFMPEG_OPTIONS)
+        source = discord.FFmpegOpusAudio(next_item.source, **self.FFMPEG_OPTIONS)
         self.vc.play(source, after=self._after_play)
 
     async def play_music(self, ctx: commands.Context) -> None:
@@ -114,6 +114,22 @@ class MusicCog(commands.Cog):
         await ctx.send(f"Reproduciendo: **{first.title}**")
         await self._play_next()
 
+    @commands.hybrid_command(name="join", description="Conecta el bot a tu canal de voz y reproduce la cola.")
+    async def join(self, ctx: commands.Context) -> None:
+        voice_channel = getattr(ctx.author.voice, 'channel', None)
+        if not voice_channel:
+            return await ctx.send("Conéctate a un canal de voz primero.")
+        try:
+            if not self.vc or not self.vc.is_connected():
+                self.vc = await voice_channel.connect(self_deaf=True)
+            else:
+                await self.vc.move_to(voice_channel)
+        except Exception as e:
+            self.bot.logger.error(f"No se pudo conectar: {e}")
+            return await ctx.send("No pude conectarme al canal de voz.")
+        await ctx.send(f"👋 Conectado a **{voice_channel.name}**")
+        if len(self.queue):
+            await self.play_music(ctx)
 
     @commands.hybrid_command(name="play", aliases=["p","playing"], description="Reproduce una canción de YouTube.")
     async def play(self, ctx: commands.Context, *, query: str) -> None:
@@ -163,7 +179,7 @@ class MusicCog(commands.Cog):
     async def show_queue(self, ctx: commands.Context) -> None:
         if not len(self.queue):
             return await ctx.send("La cola está vacía.")
-        embed = discord.Embed(title="Lista de Reproducción", color=discord.Color.green())
+        embed = discord.Embed(title="Lista de Reproducción", color=0x3388BB)
         for idx, item in enumerate(self.queue, start=1):
             embed.add_field(name=f"{idx}. {item.title}", value=item.url, inline=False)
         await ctx.send(embed=embed)
