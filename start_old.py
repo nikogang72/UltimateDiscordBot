@@ -7,9 +7,9 @@ from discord.ext import commands
 from dotenv import load_dotenv
 import datetime
 
-from cogs.music_cog import MusicCog
-from cogs.anime_art_cog import AnimeArtCog
-from cogs.help_cog import help_cog
+from cogs.music import MusicCog
+from cogs.anime_art import AnimeArtCog
+from cogs.help import help_cog
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='?', description="WIP 友希那 Bot", help_command=None, intents=intents)

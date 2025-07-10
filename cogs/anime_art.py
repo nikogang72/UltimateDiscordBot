@@ -76,7 +76,6 @@ class AnimeArtCog(commands.Cog):
                     if resp.status != 200:
                         return await ctx.send('Could not download file...')
                     data = io.BytesIO(await resp.read())
-                    #await message.edit(content='File downloaded')
                     await message.edit(content=f'Tags: `{tags}`', attachments=[discord.File(data, filename=f'{selected_image["md5"]}.{selected_image["file_ext"]}')])
         except Exception as e: 
             print("Error",  e.__class__, e)
@@ -86,7 +85,6 @@ class AnimeArtCog(commands.Cog):
     @commands.command(name="random", aliases=["danrandom"], help="Search a random image from Danbooru")
     async def random(self, ctx: commands.Context, *args):
         try: 
-            #print(f'URL: {self.danbooru_url}/posts/random.json')
             message = await ctx.send('Getting post...')
             r = requests.get(url = f'{self.danbooru_url}/posts/random.json', headers = self.danbooru_headers)
             if r.status_code != 200:
@@ -127,9 +125,6 @@ class AnimeArtCog(commands.Cog):
             if r.status_code != 200:
                 raise ValueError(f'Response Status code: {r.status_code}')
             safe_tree = ET.fromstring(r.content)
-            #print(safe_tree[0].attrib)
-            #await ctx.send(f"Status Code: {r.status_code}")
-            #await ctx.send(f'Retrieved {len(safe_tree)} images')
             selected_image = safe_tree[random.randint(0,len(safe_tree))].attrib
             await message.edit(content='Downloading file...')
             async with aiohttp.ClientSession() as session:
@@ -138,9 +133,11 @@ class AnimeArtCog(commands.Cog):
                         return await ctx.send('Could not download file...')
                     data = io.BytesIO(await resp.read())
                     ext = selected_image["file_url"][selected_image["file_url"].rindex('.')+1:]
-                    #await ctx.send(file=discord.File(data, filename=f'{selected_image["md5"]}.{ext}'))
                     await message.edit(content=f'Tags: `{tags}`', attachments=[discord.File(data, filename=f'{selected_image["md5"]}.{ext}')])
         except Exception as e: 
             print("Error",  e.__class__, e)
             print(traceback.format_exc())
             await ctx.send(f"Error requesting: {e}")
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(AnimeArtCog(bot))
