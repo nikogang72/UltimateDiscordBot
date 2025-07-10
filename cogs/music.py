@@ -39,7 +39,8 @@ class MusicQueue:
 
 class MusicCog(commands.Cog):
     """Cog para reproducir música """
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
         self.queue = MusicQueue()
         self.vc: Optional[VoiceClient] = None
         self.cookie_path = os.path.expanduser("~/UltimateDiscordBot/cookies.txt")
@@ -101,7 +102,8 @@ class MusicCog(commands.Cog):
             return
 
         source = discord.FFmpegOpusAudio(next_item.source, **self.FFMPEG_OPTIONS)
-        self.vc.play(source, after=lambda e: self.bot.loop.create_task(self._play_next()))
+        bot = self.bot
+        self.vc.play(source, after=lambda e: bot.loop.create_task(self._play_next()))
 
     async def play_music(self, ctx: commands.Context) -> None:
         """Inicia la reproducción."""
