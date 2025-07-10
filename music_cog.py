@@ -20,7 +20,8 @@ class MusicCog(commands.Cog):
                 'preferredcodec': 'm4a',
             }],
             'noplaylist': 'True',
-            'default_search': 'ytsearch'
+            'default_search': 'ytsearch',
+            'cookiefile': '~/UltimateDiscordBot/cookies.txt'
         }
         self.FFMPEG_OPTIONS = {
             'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
