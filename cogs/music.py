@@ -101,7 +101,7 @@ class MusicCog(commands.Cog):
             return
 
         source = discord.FFmpegOpusAudio(next_item.source, **self.FFMPEG_OPTIONS)
-        self.vc.play(source, after=self._after_play)
+        self.vc.play(source, after=lambda e: self.bot.loop.create_task(self._play_next()))
 
     async def play_music(self, ctx: commands.Context) -> None:
         """Inicia la reproducción."""
