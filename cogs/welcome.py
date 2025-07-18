@@ -31,7 +31,6 @@ class WelcomeCog(commands.Cog):
         embed.set_thumbnail(url=member.display_avatar.url)
         embed.set_footer(text=f"Miembro #{guild.member_count}")
 
-
         await channel.send(embed=embed)
 
         try:

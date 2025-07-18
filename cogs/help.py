@@ -2,6 +2,7 @@ from typing import List, Tuple
 
 import discord
 from discord.ext import commands
+from utils.response import reply
 
 class HelpCog(commands.Cog):
     """Cog que provee un comando de ayuda con embed mejorado y soporte híbrido."""
@@ -14,6 +15,7 @@ class HelpCog(commands.Cog):
     )
     async def _help(self, ctx: commands.Context) -> None:
         """Envía un embed con los comandos disponibles en campos separados."""
+        await ctx.defer()
         embed = discord.Embed(
             title="Listado de Comandos del BOT",
             url="https://bandori.fandom.com/wiki/MyGO!!!!!",
@@ -38,11 +40,15 @@ class HelpCog(commands.Cog):
             ("/leave", "Desconecta el bot del canal de voz"),
             ("/pause", "Pausa la canción en curso o la reanuda si ya estaba pausada"),
             ("/resume", "Reanuda la canción pausada"),
+            ("/danbooru", "Search an image in Danbooru"),
+            ("/search_tags", "Autocomplete tags for search in booru image boards"),
+            ("/danrandom", "Search a random image from Danbooru"),
+            ("/safebooru", "Search an image from Safebooru"),
         ]
 
         for cmd, desc in commands_info:
             embed.add_field(name=cmd, value=desc, inline=False)
-        await ctx.send(embed=embed)
+        await reply(ctx, embed=embed)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(HelpCog(bot))

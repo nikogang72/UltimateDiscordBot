@@ -1,143 +1,163 @@
-import discord
-from discord.ext import commands 
-import requests
+import asyncio
 import io
-import aiohttp
 import random
-import traceback
 import xml.etree.ElementTree as ET
+import logging
+from typing import Any, Optional, Dict, List
+
+import aiohttp
+import discord
+from discord.ext import commands
+from utils.response import reply
+log = logging.getLogger('discord')
 
 class AnimeArtCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.session = aiohttp.ClientSession()
         self.danbooru_url = 'https://danbooru.donmai.us'
         self.safebooru_url = 'https://safebooru.org'
         self.danbooru_headers = {
-                'User-Agent': 'Agente de Usuario del bot de discord amigo', 
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'sec-ch-ua': '"Not?A_Brand";v="8", "Chromium";v="108", "Brave";v="108"',
-                'if-none-match':'W/"37ca6f8b1f9c2e77419c12599351968c"'
-            }
-
-    @commands.command(name="search_tags", aliases=["autocomplete","tags"], help="Autocomplete tags for search in booru image boards")
-    async def search_tags(self, ctx: commands.Context, *args):
-        if len(args) < 1:
-            return await ctx.send('It is required at least 1 tag.')
-        tags = " ".join(args)
-        try: 
-            message = await ctx.send('Searching tags...')
-            tags = await self.autocomplete(tags)
-            tag_str = """Tags:"""
-            for tag in tags:
-                tag_str = tag_str+f'\n`{tag}`'
-            #await ctx.send(tag_str)
-            await message.edit(content=tag_str)
-        except Exception as e: 
-            print("Error",  e.__class__, e)
-            print(traceback.format_exc())
-            await ctx.send(f"Error {e.__class__} in searching tags: {e}")
-
-    async def autocomplete(self, tags):
-        async with aiohttp.ClientSession() as session:
-                async with session.get(url=f'{self.danbooru_url}/autocomplete.json?search[query]={tags}&search[type]=tag_query&version=1&limit=10') as resp:
-                    if resp.status != 200 and resp.status != 304:
-                        raise ValueError(f'Response Status code: {resp.status}')
-                    response_tags = await resp.json()
-                    return [tag['value'] for tag in response_tags]
-
-
-    @commands.command(name="danbooru", aliases=["danb","dbooru"], help="Search an image from Danbooru")
-    async def danbooru(self, ctx: commands.Context, *args):
-        if len(args) < 1:
-            return await ctx.send('It is required at least 1 tag.')
-        try: 
-            message = await ctx.send('Searching tags...')
-            tags = []
-            for arg in args:
-                tag_fixed = await self.autocomplete(arg)
-                if len(tag_fixed) == 0:
-                    return await message.edit(content= 'Tag not found.')
-                tags.append(tag_fixed[0])
-            await message.edit(content='Getting posts...')
-            r = requests.get(url = f'{self.danbooru_url}/posts.json?tags={"+".join(tags)}', headers=self.danbooru_headers)
-            print(f'{self.danbooru_url}/posts.json?tags={"+".join(tags)}')
-            if  r.status_code != 200 and r.status_code != 304:
-                raise ValueError(f'Error getting posts. Status code: {r.status_code}')
-            danb_data = r.json()
-
-            selected_image = danb_data[random.randint(0,len(danb_data)-1)]
-            while (not 'file_url' in selected_image):
-                selected_image = danb_data[random.randint(0,len(danb_data)-1)]
-            
-            await message.edit(content='Downloading file...')
-            async with aiohttp.ClientSession() as session:
-                async with session.get(selected_image['file_url']) as resp:
-                    if resp.status != 200:
-                        return await ctx.send('Could not download file...')
-                    data = io.BytesIO(await resp.read())
-                    await message.edit(content=f'Tags: `{tags}`', attachments=[discord.File(data, filename=f'{selected_image["md5"]}.{selected_image["file_ext"]}')])
-        except Exception as e: 
-            print("Error",  e.__class__, e)
-            print(traceback.format_exc())
-            await ctx.send(f"Error {e.__class__}: {e}")
-
-    @commands.command(name="random", aliases=["danrandom"], help="Search a random image from Danbooru")
-    async def random(self, ctx: commands.Context, *args):
-        try: 
-            message = await ctx.send('Getting post...')
-            r = requests.get(url = f'{self.danbooru_url}/posts/random.json', headers = self.danbooru_headers)
-            if r.status_code != 200:
-                raise ValueError(f'Response Status code: {r.status_code}')
-            danb_data = r.json()
-            await message.edit(content='Downloading file...')
-            async with aiohttp.ClientSession() as session:
-                if not 'file_url' in danb_data:
-                    random(ctx, args)
-                async with session.get(danb_data['file_url']) as resp:
-                    if resp.status != 200:
-                        return await ctx.send('Could not download file...')
-                    data = io.BytesIO(await resp.read())
-                    if danb_data['tag_string_character'] != '':
-                        name = f'{danb_data["tag_string_character"]}'
-                    else:
-                        name = danb_data['tag_string_general'].rsplit(' ')
-                    await message.edit(content=f'Tags: `{name}`', attachments=[discord.File(data, filename=f'{danb_data["md5"]}.{danb_data["file_ext"]}')])
-        except Exception as e: 
-            print("Error",  e.__class__, e)
-            print(traceback.format_exc())
-            await ctx.send(f"Error {e.__class__}: {e}")
-    
-    @commands.command(name="safebooru", aliases=["safe"], help="Search an image from Safebooru")
-    async def safebooru(self, ctx: commands.Context, *args):
-        message = await ctx.send('Searching tags...')
-        tags = "+".join(args)
-        params = {
-            'page':'dapi',
-            's':'post',
-            'q':'index',
-            'limit':20,
-            'tags': tags
+            'User-Agent': 'Agente de Usuario del bot de discord amigo', 
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'sec-ch-ua': '"Not?A_Brand";v="8", "Chromium";v="108", "Brave";v="108"',
+            'if-none-match':'W/"37ca6f8b1f9c2e77419c12599351968c"'
         }
-        try: 
-            await message.edit(content='Getting posts...')
-            r = requests.get(url = f'{self.safebooru_url}/index.php', params = params)
-            if r.status_code != 200:
-                raise ValueError(f'Response Status code: {r.status_code}')
-            safe_tree = ET.fromstring(r.content)
-            selected_image = safe_tree[random.randint(0,len(safe_tree))].attrib
-            await message.edit(content='Downloading file...')
-            async with aiohttp.ClientSession() as session:
-                async with session.get(selected_image['file_url']) as resp:
-                    if resp.status != 200:
-                        return await ctx.send('Could not download file...')
-                    data = io.BytesIO(await resp.read())
-                    ext = selected_image["file_url"][selected_image["file_url"].rindex('.')+1:]
-                    await message.edit(content=f'Tags: `{tags}`', attachments=[discord.File(data, filename=f'{selected_image["md5"]}.{ext}')])
-        except Exception as e: 
-            print("Error",  e.__class__, e)
-            print(traceback.format_exc())
-            await ctx.send(f"Error requesting: {e}")
+
+    async def _fetch_json(self, url: str, params: Optional[Dict[str, Any]] = None) -> Any:
+        async with self.session.get(url, params=params) as resp:
+            resp.raise_for_status()
+            return await resp.json()
+
+    async def _fetch_xml(self, url: str, params: Optional[Dict[str, Any]] = None) -> ET.Element:
+        async with self.session.get(url, params=params) as resp:
+            resp.raise_for_status()
+            text = await resp.text()
+            return ET.fromstring(text)
+
+    async def _download_bytes(self, url: str) -> bytes:
+        async with self.session.get(url) as resp:
+            resp.raise_for_status()
+            return await resp.read()
+        
+    @commands.hybrid_command(name="search_tags", description="Autocomplete tags for search in booru image boards")
+    async def search_tags(self, ctx: commands.Context, *, query: str) -> None:
+        await ctx.defer()
+        if not query:
+            return await reply(ctx, content='Se requiere al menos un tag.')
+        try:
+            data = await self._fetch_json(
+                f"{self.danbooru_url}/autocomplete.json",
+                params={
+                    "search[query]": query,
+                    "search[type]": "tag_query",
+                    "version":1,
+                    "limit": 10,
+                }
+            )
+            tags = [item['value'] for item in data]
+            if not tags:
+                return await reply(ctx, content="No se encontraron tags.", ephemeral=True)
+
+            embed = discord.Embed(
+                title=f"Autocomplete para `{query}`",
+                color=discord.Color.blue()
+            )
+            embed.add_field(
+                name="Tags",
+                value="\n".join(f"`{t}`" for t in tags),
+                inline=False
+            )
+            await reply(ctx, embed=embed)
+        except Exception as e:
+            log.exception("Error en search_tags", e)
+            await reply(ctx, content="Error al buscar tags.")
+
+    @commands.hybrid_command(name="danbooru", description="Search an image from Danbooru")
+    async def danbooru(self, ctx: commands.Context, *, tags: str) -> None:
+        await ctx.defer()
+        if not tags:
+            return await reply(ctx, content='Se requiere al menos un tag.')
+        tags = tags.split()
+        try:
+            fixed: List[str] = []
+            # Autocomplete individual tags
+            for tag in tags:
+                data = await self._fetch_json(
+                    f"{self.danbooru_url}/autocomplete.json",
+                    params={"search[query]": tag, "search[type]": "tag_query", "limit": 1}
+                )
+                if not data:
+                    return await reply(ctx, content=f"Tag `{tag}` no encontrado.")
+                fixed.append(data[0]['value'])
+
+            posts = await self._fetch_json(
+                f"{self.danbooru_url}/posts.json",
+                params={"tags": " ".join(fixed)}
+            )
+            if not posts:
+                return await reply(ctx, content="No se encontraron imágenes.")
+
+            post = random.choice(posts)
+            file_url = post.get('file_url')
+            if not file_url:
+                return await reply(ctx, content="Error al conseguir URL.")
+
+            data = await self._download_bytes(file_url)
+            filename = f"{post['md5']}.{post['file_ext']}"
+            file = discord.File(io.BytesIO(data), filename=filename)
+            content = f"Tags: `{' '.join(fixed)}`"
+            await reply(ctx, content=content, file=file)
+        except Exception as e:
+            log.exception("Error en danbooru", e)
+            await reply(ctx, content="Error al obtener imagen.")
+
+    @commands.hybrid_command(name="danrandom", description="Search a random image from Danbooru")
+    async def danrandom(self, ctx: commands.Context) -> None:
+        await ctx.defer()
+        try:
+            post = await self._fetch_json(f"{self.danbooru_url}/posts/random.json")
+            file_url = post.get('file_url')
+            if not file_url:
+                return await reply(ctx, content="La publicación aleatoria no tiene URL de archivo.")
+
+            data = await self._download_bytes(file_url)
+            filename = f"{post['md5']}.{post['file_ext']}"
+            name = post.get('tag_string_character') or post.get('tag_string_general', '')
+            file = discord.File(io.BytesIO(data), filename=filename)
+            await reply(ctx, content=f"Tags: `{name}`", file=file)
+        except Exception as e:
+            log.exception("Error en danrandom", e)
+            await reply(ctx, content="Error al obtener imagen aleatoria.")
+
+    @commands.hybrid_command(name="safebooru", description="Search an image from Safebooru")
+    async def safebooru(self, ctx: commands.Context, *, tags: str) -> None:
+        await ctx.defer()
+        params = {
+            'page': 'dapi', 's': 'post', 'q': 'index', 'limit': 20, 'tags': tags
+        }
+        try:
+            xml = await self._fetch_xml(f"{self.safebooru_url}/index.php", params=params)
+            posts = xml.findall('post')
+            if not posts:
+                return await reply(ctx, content="No se encontraron imágenes.")
+
+            elem = random.choice(posts)
+            attrib = elem.attrib
+            file_url = attrib.get('file_url')
+            if not file_url:
+                return await reply(ctx, content="La publicación no tiene URL de archivo.")
+
+            data = await self._download_bytes(file_url)
+            ext = file_url.rsplit('.', 1)[-1]
+            filename = f"{attrib['md5']}.{ext}"
+            source = attrib.get('source') or tags
+            file = discord.File(io.BytesIO(data), filename=filename)
+            await reply(ctx, content=f"Source: <{source}>", file=file)
+        except Exception as e:
+            log.exception("Error en safebooru", e)
+            await reply(ctx, content="Error al obtener imagen safe.")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(AnimeArtCog(bot))
