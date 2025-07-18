@@ -22,12 +22,13 @@ class CustomBot(commands.Bot):
         self.web_client = web_client
         self.testing_guild_id = testing_guild_id
         self.initial_extensions = initial_extensions
+        self.color = 0x3388BB
 
     async def setup_hook(self) -> None:
         for extension in self.initial_extensions:
             await self.load_extension(extension)
 
-        if self.testing_guild_id:
+        if not self.testing_guild_id:
             guild = discord.Object(self.testing_guild_id)
             self.tree.copy_global_to(guild=guild)
             await self.tree.sync(guild=guild)

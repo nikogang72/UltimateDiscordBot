@@ -19,7 +19,7 @@ class HelpCog(commands.Cog):
         embed = discord.Embed(
             title="Listado de Comandos del BOT",
             url="https://bandori.fandom.com/wiki/MyGO!!!!!",
-            color=0x3388BB,
+            color=self.bot.color,
             timestamp=discord.utils.utcnow(),
         )
         embed.set_author(

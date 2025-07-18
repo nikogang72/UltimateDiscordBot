@@ -25,7 +25,7 @@ class WelcomeCog(commands.Cog):
         embed = discord.Embed(
             title="¡Bienvenido!",
             description=f"{member.mention} se ha unido a **{guild.name}** \n Account creation date: {str(member.created_at)[0:10]}",
-            color=discord.Color.green(),
+            color=self.bot.color,
             timestamp=member.joined_at or discord.utils.utcnow()
         )
         embed.set_thumbnail(url=member.display_avatar.url)

@@ -62,7 +62,7 @@ class AnimeArtCog(commands.Cog):
 
             embed = discord.Embed(
                 title=f"Autocomplete para `{query}`",
-                color=discord.Color.blue()
+                color=self.bot.color
             )
             embed.add_field(
                 name="Tags",

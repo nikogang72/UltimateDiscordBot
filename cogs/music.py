@@ -181,7 +181,7 @@ class MusicCog(commands.Cog):
     async def show_queue(self, ctx: commands.Context) -> None:
         if not len(self.queue):
             return await ctx.send("La cola está vacía.")
-        embed = discord.Embed(title="Lista de Reproducción", color=0x3388BB)
+        embed = discord.Embed(title="Lista de Reproducción", color=self.bot.color)
         for idx, item in enumerate(self.queue, start=1):
             embed.add_field(name=f"{idx}. {item.title}", value=item.url, inline=False)
         await ctx.send(embed=embed)
