@@ -1,6 +1,7 @@
+from __future__ import annotations
 import asyncio
-import logging
 from typing import Any, Dict, List, Optional
+from start import CustomBot
 
 import aiohttp
 import discord
@@ -8,11 +9,9 @@ from discord.ext import commands
 
 from utils.response import reply  # helper para respuestas prefijo/slash
 
-log = logging.getLogger('discord')
-
 class UtilitiesCog(commands.Cog):
     """Cog de utilidades: definiciones de palabras mediante DictionaryAPI."""
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: CustomBot) -> None:
         self.bot = bot
         self.session = aiohttp.ClientSession()
 
@@ -73,10 +72,10 @@ class UtilitiesCog(commands.Cog):
         except aiohttp.ClientResponseError as e:
             if e.status == 404:
                 return await reply(ctx, content=f"❌ No se encontró definición para `{word}`.")
-            log.exception("HTTP error en define", e)
+            self.bot.logger.error("HTTP error en define")
             await reply(ctx, content="⚠️ Error al conectar con el servicio de definiciones.")
-        except Exception as e:
-            log.exception("Error inesperado en define", e)
+        except Exception:
+            self.bot.logger.exception("Error inesperado en define")
             await reply(ctx, content="⚠️ Ocurrió un error inesperado al buscar la definición.")
     
     @commands.hybrid_command(
@@ -95,7 +94,6 @@ class UtilitiesCog(commands.Cog):
                 return await reply(ctx, content=f"❌ No se encontró definición para `{term}` en Urban Dictionary.")
 
             sorted_defs = sorted(definitions, key=lambda d: d.get('thumbs_up', 0), reverse=True)[:3]
-
             embed = discord.Embed(
                 title=f"Urban Dictionary: {term}",
                 color=self.bot.color
@@ -111,8 +109,8 @@ class UtilitiesCog(commands.Cog):
                 embed.add_field(name=f"Definición {idx}", value=value, inline=False)
 
             await reply(ctx, embed=embed)
-        except Exception as e:
-            log.exception("Error en urban", e)
+        except Exception:
+            self.bot.logger.exception("Error en urban")
             await reply(ctx, content="⚠️ Error al buscar en Urban Dictionary.")
 
 async def setup(bot: commands.Bot) -> None:

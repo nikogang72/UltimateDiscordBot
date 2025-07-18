@@ -1,12 +1,15 @@
+from __future__ import annotations
 import os
 import asyncio
 from dataclasses import dataclass
+from start import CustomBot
 from typing import List, Optional, Union
 
 import discord
 from discord.ext import commands
 from discord import VoiceChannel, VoiceClient
 from yt_dlp import YoutubeDL
+
 
 @dataclass
 class QueueItem:
@@ -39,7 +42,7 @@ class MusicQueue:
 
 class MusicCog(commands.Cog):
     """Cog para reproducir música """
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: CustomBot):
         self.bot = bot
         self.queue = MusicQueue()
         self.vc: Optional[VoiceClient] = None

@@ -70,8 +70,8 @@ class AnimeArtCog(commands.Cog):
                 inline=False
             )
             await reply(ctx, embed=embed)
-        except Exception as e:
-            log.exception("Error en search_tags", e)
+        except Exception:
+            log.exception("Error en search_tags")
             await reply(ctx, content="Error al buscar tags.")
 
     @commands.hybrid_command(name="danbooru", description="Search an image from Danbooru")
@@ -109,8 +109,8 @@ class AnimeArtCog(commands.Cog):
             file = discord.File(io.BytesIO(data), filename=filename)
             content = f"Tags: `{' '.join(fixed)}`"
             await reply(ctx, content=content, file=file)
-        except Exception as e:
-            log.exception("Error en danbooru", e)
+        except Exception:
+            log.exception("Error en danbooru")
             await reply(ctx, content="Error al obtener imagen.")
 
     @commands.hybrid_command(name="danrandom", description="Search a random image from Danbooru")
@@ -127,8 +127,8 @@ class AnimeArtCog(commands.Cog):
             name = post.get('tag_string_character') or post.get('tag_string_general', '')
             file = discord.File(io.BytesIO(data), filename=filename)
             await reply(ctx, content=f"Tags: `{name}`", file=file)
-        except Exception as e:
-            log.exception("Error en danrandom", e)
+        except Exception:
+            log.exception("Error en danrandom")
             await reply(ctx, content="Error al obtener imagen aleatoria.")
 
     @commands.hybrid_command(name="safebooru", description="Search an image from Safebooru")
@@ -155,8 +155,8 @@ class AnimeArtCog(commands.Cog):
             source = attrib.get('source') or tags
             file = discord.File(io.BytesIO(data), filename=filename)
             await reply(ctx, content=f"Source: <{source}>", file=file)
-        except Exception as e:
-            log.exception("Error en safebooru", e)
+        except Exception:
+            log.exception("Error en safebooru")
             await reply(ctx, content="Error al obtener imagen safe.")
 
 async def setup(bot: commands.Bot):

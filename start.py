@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import logging.handlers
+from logging import Logger
 
 from typing import List, Optional
 
@@ -16,12 +17,14 @@ class CustomBot(commands.Bot):
         initial_extensions: List[str],
         web_client: ClientSession,
         testing_guild_id: Optional[int] = None,
+        logger: Logger,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.web_client = web_client
         self.testing_guild_id = testing_guild_id
         self.initial_extensions = initial_extensions
+        self.logger = logger
         self.color = 0x3388BB
 
     async def setup_hook(self) -> None:
@@ -70,6 +73,7 @@ async def setup():
             initial_extensions=exts,
             intents=intents,
             testing_guild_id=config('PISHA_SERVER'),
+            logger=logger,
         ) as bot:
             await bot.start(config('TOKEN'))
 
