@@ -1,18 +1,17 @@
-import asyncio
+from __future__ import annotations
 import io
 import random
 import xml.etree.ElementTree as ET
-import logging
 from typing import Any, Optional, Dict, List
 
 import aiohttp
 import discord
 from discord.ext import commands
+from start import CustomBot
 from utils.response import reply
-log = logging.getLogger('discord')
 
 class AnimeArtCog(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: CustomBot):
         self.bot = bot
         self.session = aiohttp.ClientSession()
         self.danbooru_url = 'https://danbooru.donmai.us'
@@ -71,7 +70,7 @@ class AnimeArtCog(commands.Cog):
             )
             await reply(ctx, embed=embed)
         except Exception:
-            log.exception("Error en search_tags")
+            self.bot.logger.exception("Error en search_tags")
             await reply(ctx, content="Error al buscar tags.")
 
     @commands.hybrid_command(name="danbooru", description="Search an image from Danbooru")
@@ -110,7 +109,7 @@ class AnimeArtCog(commands.Cog):
             content = f"Tags: `{' '.join(fixed)}`"
             await reply(ctx, content=content, file=file)
         except Exception:
-            log.exception("Error en danbooru")
+            self.bot.logger.exception("Error en danbooru")
             await reply(ctx, content="Error al obtener imagen.")
 
     @commands.hybrid_command(name="danrandom", description="Search a random image from Danbooru")
@@ -128,7 +127,7 @@ class AnimeArtCog(commands.Cog):
             file = discord.File(io.BytesIO(data), filename=filename)
             await reply(ctx, content=f"Tags: `{name}`", file=file)
         except Exception:
-            log.exception("Error en danrandom")
+            self.bot.logger.exception("Error en danrandom")
             await reply(ctx, content="Error al obtener imagen aleatoria.")
 
     @commands.hybrid_command(name="safebooru", description="Search an image from Safebooru")
@@ -156,7 +155,7 @@ class AnimeArtCog(commands.Cog):
             file = discord.File(io.BytesIO(data), filename=filename)
             await reply(ctx, content=f"Source: <{source}>", file=file)
         except Exception:
-            log.exception("Error en safebooru")
+            self.bot.logger.exception("Error en safebooru")
             await reply(ctx, content="Error al obtener imagen safe.")
 
 async def setup(bot: commands.Bot):
