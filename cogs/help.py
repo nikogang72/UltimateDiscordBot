@@ -44,6 +44,8 @@ class HelpCog(commands.Cog):
             ("/search_tags", "Autocomplete tags for search in booru image boards"),
             ("/danrandom", "Search a random image from Danbooru"),
             ("/safebooru", "Search an image from Safebooru"),
+            ("/define", "Obtiene la definición de una palabra (inglés)."),
+            ("/urban", "Busca la definición de slang en Urban Dictionary."),
         ]
 
         for cmd, desc in commands_info:
