@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os
 import asyncio
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from start import CustomBot
 from typing import List, Optional, Union
@@ -46,24 +47,27 @@ class MusicCog(commands.Cog):
         self.bot = bot
         self.queue = MusicQueue()
         self.vc: Optional[VoiceClient] = None
+        self.ytdl_executor = ProcessPoolExecutor(max_workers=1)  # dedicado a búsquedas
         self._voice_lock = asyncio.Lock() 
         self.cookie_path = os.path.expanduser("~/UltimateDiscordBot/cookies.txt")
+
+        # Options
         self.YDL_OPTIONS = {
             'format': 'bestaudio/best',
-            # 'postprocessors': [{  # Extract audio using ffmpeg
-            #     'key': 'FFmpegExtractAudio',
-            #     'preferredcodec': 'm4a',
-            # }],
             'noplaylist': True,
             'default_search': 'ytsearch',
             "quiet": True,
             "retries": 3,
+            "socket_timeout": 15,
             "nocheckcertificate": True,
             'cookiefile': self.cookie_path if os.path.exists(self.cookie_path) else None
         }
         self.FFMPEG_OPTIONS = {
             'before_options': '-nostdin -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-            'options': '-vn -loglevel warning -fflags +nobuffer -flags low_delay -max_interleave_delta 0 -reorder_queue_size 0 -probesize 32k -analyzeduration 0'
+            'options':  "-vn -loglevel warning -fflags +nobuffer"
+                        "-flags low_delay -max_interleave_delta 0"
+                        "-reorder_queue_size 0 -threads 1"
+                        "-probesize 32k -analyzeduration 0"
         }
 
     def _extract_info(self, query: str) -> Union[dict, None]:
@@ -98,7 +102,7 @@ class MusicCog(commands.Cog):
 
     async def search_yt(self, query: str) -> Optional[dict]:
         loop = asyncio.get_running_loop() # Para no bloquear el hilo principal
-        return await loop.run_in_executor(None, self._extract_info, query)
+        return await loop.run_in_executor(self.ytdl_executor, self._extract_info, query)
 
     def _after_play(self, error: Optional[Exception]) -> None:
         if error:
