@@ -53,21 +53,29 @@ class MusicCog(commands.Cog):
 
         # Options
         self.YDL_OPTIONS = {
-            'format': 'bestaudio/best',
+            'format': 'bestaudio[acodec^=opus]/bestaudio/best',
             'noplaylist': True,
             'default_search': 'ytsearch',
             "quiet": True,
             "retries": 3,
             "socket_timeout": 15,
             "nocheckcertificate": True,
-            'cookiefile': self.cookie_path if os.path.exists(self.cookie_path) else None
+            'cookiefile': self.cookie_path if os.path.exists(self.cookie_path) else None,
+            "extract_flat": False,
         }
         self.FFMPEG_OPTIONS = {
             'before_options': '-nostdin -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-            'options':  "-vn -loglevel warning -fflags +nobuffer"
-                        "-flags low_delay -max_interleave_delta 0"
-                        "-reorder_queue_size 0 -threads 1"
-                        "-probesize 32k -analyzeduration 0"
+            'options': (
+                "-vn "
+                "-loglevel warning "
+                "-fflags +nobuffer "
+                "-flags low_delay "
+                "-max_interleave_delta 0 "
+                "-reorder_queue_size 0 "
+                "-threads 1 "
+                "-probesize 256k "         # un poco más alto mejora estabilidad
+                "-analyzeduration 0"
+            )
         }
 
     def _extract_info(self, query: str) -> Union[dict, None]:
@@ -253,6 +261,11 @@ class MusicCog(commands.Cog):
             await ctx.send("👋 Desconectado.")
         else:
             await ctx.send("No estoy en ningún canal de voz.")
+
+    async def cog_unload(self):
+        self.ytdl_executor.shutdown(wait=False, cancel_futures=True)
+        if self.vc and self.vc.is_connected():
+            await self.vc.disconnect()
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(MusicCog(bot))
