@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 import asyncio
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from start import CustomBot
 from typing import List, Optional, Union
@@ -47,7 +47,7 @@ class MusicCog(commands.Cog):
         self.bot = bot
         self.queue = MusicQueue()
         self.vc: Optional[VoiceClient] = None
-        self.ytdl_executor = ProcessPoolExecutor(max_workers=1)  # dedicado a búsquedas
+        self.ytdl_executor = ThreadPoolExecutor(max_workers=1)  # dedicado a búsquedas
         self._voice_lock = asyncio.Lock() 
         self.cookie_path = os.path.expanduser("~/UltimateDiscordBot/cookies.txt")
 
