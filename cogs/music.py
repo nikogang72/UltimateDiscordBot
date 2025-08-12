@@ -47,7 +47,7 @@ class MusicCog(commands.Cog):
         self.queue = MusicQueue()
         self.vc: Optional[VoiceClient] = None
         self._voice_lock = asyncio.Lock() 
-        self.cookie_path = os.path.expanduser("~/Yukina/UltimateDiscordBot/cookies.txt")
+        self.cookie_path = os.path.expanduser("~/UltimateDiscordBot/cookies.txt")
         self.YDL_OPTIONS = {
             'format': 'bestaudio/best',
             # 'postprocessors': [{  # Extract audio using ffmpeg
