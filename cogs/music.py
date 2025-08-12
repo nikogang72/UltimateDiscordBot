@@ -46,21 +46,24 @@ class MusicCog(commands.Cog):
         self.bot = bot
         self.queue = MusicQueue()
         self.vc: Optional[VoiceClient] = None
-        self.cookie_path = os.path.expanduser("~/UltimateDiscordBot/cookies.txt")
+        self._voice_lock = asyncio.Lock() 
+        self.cookie_path = os.path.expanduser("~/Yukina/UltimateDiscordBot/cookies.txt")
         self.YDL_OPTIONS = {
-            'format': 'm4a/bestaudio',
-            # ℹ️ See help(yt_dlp.postprocessor) for a list of available Postprocessors and their arguments
-            'postprocessors': [{  # Extract audio using ffmpeg
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'm4a',
-            }],
-            'noplaylist': 'True',
+            'format': 'bestaudio/best',
+            # 'postprocessors': [{  # Extract audio using ffmpeg
+            #     'key': 'FFmpegExtractAudio',
+            #     'preferredcodec': 'm4a',
+            # }],
+            'noplaylist': True,
             'default_search': 'ytsearch',
-            'cookiefile': self.cookie_path
+            "quiet": True,
+            "retries": 3,
+            "nocheckcertificate": True,
+            'cookiefile': self.cookie_path if os.path.exists(self.cookie_path) else None
         }
         self.FFMPEG_OPTIONS = {
-            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-            'options': '-vn -threads 2'
+            'before_options': '-nostdin -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+            'options': '-vn -loglevel warning -fflags +nobuffer -flags low_delay -max_interleave_delta 0 -reorder_queue_size 0 -probesize 32k -analyzeduration 0'
         }
 
     def _extract_info(self, query: str) -> Union[dict, None]:
@@ -69,16 +72,28 @@ class MusicCog(commands.Cog):
                 info = ydl.extract_info(query, download=False)
                 if info.get('_type') == 'playlist':
                     info = info['entries'][0]
-                # busca primer formato de audio
-                for fmt in info.get('formats', []):
-                    if fmt.get('acodec') != 'none':
-                        return {
-                            'source': fmt['url'],
-                            'title': info.get('title'),
-                            'url': info.get('webpage_url')
-                        }
+                
+                url = None
+                # preferred opus/webm
+                fmts = info.get("formats", [])
+                preferred = sorted(
+                    (f for f in fmts if f.get("acodec") and f["acodec"] != "none" and f.get("url")),
+                    key=lambda f: (
+                        0 if (f.get("acodec", "").startswith("opus") or "webm" in f.get("ext", "")) else 1,
+                        -(f.get("abr") or 0)
+                    )
+                )
+                if preferred:
+                    url = preferred[0]["url"]
+                if not url:
+                    return None
+                return {
+                    "source": url,
+                    "title": info.get("title") or "Unknown title",
+                    "url": info.get("webpage_url") or query
+                }
         except Exception:
-            return None
+            self.bot.logger.exception("Error en extract info")
         return None
 
     async def search_yt(self, query: str) -> Optional[dict]:
@@ -90,23 +105,53 @@ class MusicCog(commands.Cog):
             self.bot.logger.error(f"Error en reproducción: {error}")
         self.bot.loop.call_soon_threadsafe(asyncio.create_task, self._play_next())
 
+    async def _reset_voice(self):
+        try:
+            if self.vc:
+                await self.vc.disconnect(force=True)
+        except Exception:
+            pass
+        finally:
+            self.vc = None
+        await asyncio.sleep(1.5)
+
+    async def _ensure_connected(self, channel: VoiceChannel) -> bool:
+        async with self._voice_lock:
+            try:
+                if not self.vc or not self.vc.is_connected():
+                    # evitar reanudar sesiones inválidas
+                    self.vc = await channel.connect(self_deaf=True, reconnect=False)
+                elif self.vc.channel != channel:
+                    await self.vc.move_to(channel)
+                return True
+            except Exception as e:
+                self.bot.logger.error(f"No se pudo conectar/mover: {e}")
+                return False
+
     async def _play_next(self) -> None:
         """Reproduce la siguiente canción en la cola."""
-        next_item = self.queue.dequeue()
-        if not next_item:
+        if not len(self.queue):
             return
+        current = self.queue.peek()
+
         try:
-            if not self.vc or not self.vc.is_connected():
-                self.vc = await next_item.channel.connect(self_deaf=True)
-            else:
-                await self.vc.move_to(next_item.channel)
+            if not await self._ensure_connected(current.channel):
+                await self._reset_voice()
+                if not await self._ensure_connected(current.channel):
+                    return
         except Exception as e:
             self.bot.logger.error(f"No se pudo conectar: {e}")
             return
 
-        source = discord.FFmpegOpusAudio(next_item.source, **self.FFMPEG_OPTIONS)
-        bot = self.bot
-        self.vc.play(source, after=lambda e: bot.loop.create_task(self._play_next()))
+        try:
+            source = discord.FFmpegPCMAudio(current.source, **self.FFMPEG_OPTIONS)
+        except Exception as e:
+            self.bot.logger.error(f"FFmpegOpusAudio falló: {e}")
+            self.queue.dequeue()
+            return await self._play_next()
+
+        self.queue.dequeue()
+        self.vc.play(source, after=self._after_play)
 
     async def play_music(self, ctx: commands.Context) -> None:
         """Inicia la reproducción."""
