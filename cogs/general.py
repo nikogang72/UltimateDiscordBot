@@ -45,7 +45,7 @@ class General(commands.Cog):
         if message.guild is None or message.author.bot:
             return  
 
-        deleter = "Desconocido"
+        deleter = "??"
         try:
             async for entry in message.guild.audit_logs(
                 limit=1, action=discord.AuditLogAction.message_delete
@@ -59,11 +59,8 @@ class General(commands.Cog):
         timestamp = int(message.created_at.timestamp())
         texto = (
             f"## Mensaje eliminado\n"
-            f"Deleter  : {deleter}\n"
-            f"Autor    : {message.author} ({message.author.id})\n"
-            f"Fecha    : <t:{timestamp}:F>\n"
-            f"Canal    : #{message.channel}\n"
-            f"```"
+            f"#{message.channel} | {message.author} ({message.author.id}) | {deleter}"
+            f"<t:{timestamp}:f>\n"
         )
         try:
             await message.channel.send(texto)
