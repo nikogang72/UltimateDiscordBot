@@ -40,5 +40,25 @@ class General(commands.Cog):
     async def on_message_edit(self, message_before: discord.Message, message_after: discord.Message):
         await self.on_message(message_after)
 
+    @commands.Cog.listener()
+    async def on_message_delete(self, message: discord.Message):
+        if message.author.bot:
+            return  
+
+        embed = discord.Embed(
+            title="🗑️ Mensaje eliminado",
+            description=f"Canal: {message.channel.mention}",
+            color=discord.Color.red()
+        )
+        embed.add_field(name="Autor", value=f"{message.author} ({message.author.id})", inline=False)
+        embed.add_field(name="Contenido", value=message.content or "*[Vacío]*", inline=False)
+
+        if message.attachments:
+            archivos = "\n".join(a.url for a in message.attachments)
+            embed.add_field(name="Adjuntos", value=archivos, inline=False)
+
+        embed.set_footer(text=f"ID mensaje: {message.id}")
+        await message.channel.send(embed=embed)
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(General(bot))
