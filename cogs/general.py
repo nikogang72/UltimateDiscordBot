@@ -42,7 +42,7 @@ class General(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
-        if message.guild is None or message.author.bot:
+        if message.author.bot:
             return  
 
         deleter = "??"
@@ -58,8 +58,8 @@ class General(commands.Cog):
 
         timestamp = int(message.created_at.timestamp())
         texto = (
-            f"## Mensaje eliminado\n"
-            f"#{message.channel} | {message.author} ({message.author.id}) | {deleter}"
+            f"### Mensaje eliminado\n"
+            f"#{message.channel} | {message.author} ({message.author.id}) | {deleter}\n"
             f"<t:{timestamp}:f>\n"
         )
         try:
