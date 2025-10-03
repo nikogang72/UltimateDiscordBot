@@ -42,22 +42,33 @@ class General(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
-        if message.author.bot:
+        if message.guild is None or message.author.bot:
             return  
 
-        contenido = message.content or "[Vacío]"
-        adjuntos = ""
-        if message.attachments:
-            urls = " ".join(a.url for a in message.attachments)
-            adjuntos = f"\nAdjuntos: {urls}"
+        deleter = "Desconocido"
+        try:
+            async for entry in message.guild.audit_logs(
+                limit=1, action=discord.AuditLogAction.message_delete
+            ):
+                if entry.target.id == message.author.id:
+                    deleter = f"{entry.user}"
+                    break
+        except discord:
+            self.bot.logger.exception("Error al leer audit logs")
 
+        timestamp = message.created_at.strftime("%Y-%m-%d %H:%M:%S")
         texto = (
-            f"🗑️ Se eliminó un mensaje en #{message.channel}:\n"
-            f"Autor: {message.author} ({message.author.id})\n"
-            f"Contenido: {contenido}{adjuntos}\n"
-            f"ID mensaje: {message.id}"
+            f" # Mensaje eliminado\n"
+            f"Autor     : {message.author} ({message.author.id})\n"
+            f"ID/Fecha  : {message.id} | {timestamp}\n"
+            f"Canal     : #{message.channel}\n"
+            f"Eliminado : {deleter}\n"
+            f"```"
         )
-        await message.channel.send(texto)
+        try:
+            await message.channel.send(texto)
+        except Exception:
+            self.bot.logger.exception("Error al mandar el log de delete")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(General(bot))
