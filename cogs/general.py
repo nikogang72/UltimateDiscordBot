@@ -56,18 +56,19 @@ class General(commands.Cog):
         except discord:
             self.bot.logger.exception("Error al leer audit logs")
 
-        timestamp = message.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = int(message.created_at.timestamp())
         texto = (
-            f" # Mensaje eliminado\n"
-            f"Autor     : {message.author} ({message.author.id})\n"
-            f"ID/Fecha  : {message.id} | {timestamp}\n"
-            f"Canal     : #{message.channel}\n"
-            f"Eliminado : {deleter}\n"
+            f"## Mensaje eliminado\n"
+            f"Deleter  : {deleter}\n"
+            f"Autor    : {message.author} ({message.author.id})\n"
+            f"Fecha    : <t:{timestamp}:F>\n"
+            f"Canal    : #{message.channel}\n"
             f"```"
         )
         try:
             await message.channel.send(texto)
         except Exception:
+            await message.channel.send(f"Alguien borró un mensaje viejo: @{message.author | "??"}")
             self.bot.logger.exception("Error al mandar el log de delete")
 
 async def setup(bot: commands.Bot):
