@@ -64,6 +64,7 @@ async def setup():
     async with ClientSession() as our_client:
         exts = ['cogs.general', 'cogs.welcome', 'cogs.help', 'cogs.music', 'cogs.anime_art', 'cogs.utilities']
         intents = discord.Intents.default()
+        intents.messages = True
         intents.message_content = True
         intents.members = True
         async with CustomBot(
