@@ -45,20 +45,19 @@ class General(commands.Cog):
         if message.author.bot:
             return  
 
-        embed = discord.Embed(
-            title="🗑️ Mensaje eliminado",
-            description=f"Canal: {message.channel.mention}",
-            color=discord.Color.red()
-        )
-        embed.add_field(name="Autor", value=f"{message.author} ({message.author.id})", inline=False)
-        embed.add_field(name="Contenido", value=message.content or "*[Vacío]*", inline=False)
-
+        contenido = message.content or "[Vacío]"
+        adjuntos = ""
         if message.attachments:
-            archivos = "\n".join(a.url for a in message.attachments)
-            embed.add_field(name="Adjuntos", value=archivos, inline=False)
+            urls = " ".join(a.url for a in message.attachments)
+            adjuntos = f"\nAdjuntos: {urls}"
 
-        embed.set_footer(text=f"ID mensaje: {message.id}")
-        await message.channel.send(embed=embed)
+        texto = (
+            f"🗑️ Se eliminó un mensaje en #{message.channel}:\n"
+            f"Autor: {message.author} ({message.author.id})\n"
+            f"Contenido: {contenido}{adjuntos}\n"
+            f"ID mensaje: {message.id}"
+        )
+        await message.channel.send(texto)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(General(bot))
