@@ -42,9 +42,6 @@ class General(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
-        if message.author.bot:
-            return  
-
         deleter = "??"
         try:
             async for entry in message.guild.audit_logs(
@@ -55,6 +52,9 @@ class General(commands.Cog):
                     break
         except discord:
             self.bot.logger.exception("Error al leer audit logs")
+
+        if message.author.bot and message.author == deleter:
+            return  
 
         timestamp = int(message.created_at.timestamp())
         texto = (
