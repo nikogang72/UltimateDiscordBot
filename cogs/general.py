@@ -55,7 +55,7 @@ class General(commands.Cog):
 
         if message.author.bot and message.author == deleter:
             return  
-        if deleter == "SaucyBot#1322": # SaucyBot
+        if message.author.id == 647368715742216193: # SaucyBot
             return
 
         timestamp = int(message.created_at.timestamp())
