@@ -64,7 +64,9 @@ class MusicCog(commands.Cog):
             "extract_flat": False,
             'source_address': '0.0.0.0',
             "js_runtimes": {
-                "node": "/usr/bin/node"
+                "node": {
+                    "path": "/usr/bin/node"
+                }
             },
             "extractor_args": {
                 "youtube": {
