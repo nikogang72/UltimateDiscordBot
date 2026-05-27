@@ -53,7 +53,7 @@ class MusicCog(commands.Cog):
 
         # Options
         self.YDL_OPTIONS = {
-            'format': 'bestaudio[acodec^=opus]/bestaudio/best',
+            'format': 'bestaudio/best',
             'noplaylist': True,
             'default_search': 'ytsearch',
             "quiet": True,
@@ -62,6 +62,15 @@ class MusicCog(commands.Cog):
             "nocheckcertificate": True,
             'cookiefile': self.cookie_path if os.path.exists(self.cookie_path) else None,
             "extract_flat": False,
+            'source_address': '0.0.0.0',
+            "js_runtimes": {
+                "node": "/usr/bin/node"
+            },
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["web"]
+                }
+            }
         }
         self.FFMPEG_OPTIONS = {
             'before_options': '-nostdin -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
